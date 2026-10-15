@@ -381,7 +381,7 @@ else:
                     except Exception as e:
                         st.error(t['error_msg'] + str(e))
 
-                # ⚡ 엔진 종류나 API 키 유무와 무관하게 무조건 AI 요약 리포트 자동 생성
+                # ⚡ [업그레이드 포인트] 기번이 다소 어성하게 번역했더라도, [원본]과 [번역본]을 동시에 던져주어 맥락 손실 없는 완벽한 AI 요약 리포트 생성
                 if has_success and final_translated_text:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
@@ -389,7 +389,14 @@ else:
                     summary_output = ""
                     if api_key:
                         try:
-                            summary_prompt = "다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n원문에 명시된 내용(예: 기한, 날짜, 시간, 장소, 시험 범위 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n[번역된 텍스트]\n" + final_translated_text
+                            summary_prompt = (
+                                "다음 원문과 번역된 텍스트를 함께 참고하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n"
+                                "번역투가 어색할 수 있으므로 원문의 정확한 맥락(기한, 날짜, 시간, 장소, 시험 범위 등)을 파악하여 반영하고, "
+                                "원문에 특정 항목이 없다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n"
+                                "결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n"
+                                "[원본 텍스트]\n" + user_text + "\n\n"
+                                "[번역된 텍스트]\n" + final_translated_text
+                            )
                             summary_output = generate_gemini_auto(api_key, summary_prompt)
                         except Exception:
                             summary_output = ""
