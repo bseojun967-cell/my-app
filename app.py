@@ -323,7 +323,7 @@ else:
                     st.warning("⚠️ 이미지 OCR 및 AI 번역을 이용하려면 사이드바에 **Google Gemini API 키**를 입력해 주세요.")
                 else:
                     try:
-                        prompt = f"이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, 추출한 텍스트를 {lang_name}로 매끄럽고 자연스럽게 번역해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어서 보기 쉽게 정돈해서 출력해줘."
+                        prompt = f"이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, {lang_name}로 매끄럽게 번역해줘. HTML 태그(<u> 등)나 어색한 직역투(~하는 것입니다)는 완전히 지우고, 볼드체(**텍스트**)와 한국어 문맥에 맞는 자연스러운 학술/출제 지문 어조로 깔끔하게 출력해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어 출력해줘."
                         
                         with st.spinner(t['spinner_img']):
                             translated_img_res = generate_gemini_auto(api_key, prompt, image)
