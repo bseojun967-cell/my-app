@@ -4,6 +4,7 @@ import requests
 from PIL import Image
 import io
 import base64
+from datetime import datetime
 
 st.set_page_config(page_title="통합 학사 번역기 | Multi-Engine Translator", page_icon="🌐", layout="wide")
 
@@ -76,7 +77,6 @@ def generate_gemini_auto(api_key, prompt, image=None):
 
     parts = [{"text": prompt}]
     if image:
-        # 투명 배경(RGBA) 또는 팔레트(P) 모드 이미지를 RGB로 변환하여 JPEG 에러 방지
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
             
@@ -115,12 +115,21 @@ def generate_gemini_auto(api_key, prompt, image=None):
 TEXTS = {
     "한국어 (Korean)": {
         "title": "🌐 통합 학사 번역기 서비스",
-        "subtitle": "환영합니다! 시작하기 전 기본 언어 설정과 가이드라인을 확인해 주세요.",
+        "subtitle": "환영합니다! 시작하기 전 서비스 설명과 API 가이드라인을 확인해 주세요.",
         "lang_label": "번역 결과로 출력될 언어를 선택하세요:",
-        "guide_title": "📋 서비스 이용 가이드라인 및 안내",
+        "guide_title": "📋 서비스 이용 가이드라인 및 상세 설명",
         "guide_content": """
-        ### 📌 서비스 개요 및 작동 방식
-        본 번역기는 사용자의 편의와 번역 품질을 극대화하기 위해 **다중 엔진 연동 시스템**, **텍스트 비교 번역**, **이미지 OCR 번역 기능**을 제공합니다.
+### 📌 1. 앱 상세 설명
+- **다중 엔진 통합**: 기본 기계번역, **Google Gemini AI 번역**, **DeepL 번역**을 입맛에 맞게 골라 쓸 수 있습니다.
+- **텍스트 비교 모드**: 일반 기계번역 결과와 Gemini AI의 전공/학술 특화 번역을 한 화면에서 나란히 비교할 수 있습니다.
+- **이미지 OCR 번역**: 원서, 전공 교재, 과제 캡처 이미지 등을 업로드하면 텍스트를 추출하고 자연스럽게 번역해 줍니다.
+
+### 🔑 2. API 키 발급 및 설정 가이드
+- **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다.
+- **Google Gemini API**: 학술 교재 이미지 분석 및 고품질 AI 번역을 위해 필요합니다.
+  - 🔗 [Google AI Studio 바로가기 (API 키 발급 링크)](https://aistudio.google.com/) 에서 무료로 발급받을 수 있습니다.
+- **DeepL API**: DeepL 유료/무료 계정의 API 키를 입력하여 압도적인 자연스러움의 번역을 이용할 수 있습니다.
+- **사용 방법**: 첫 화면 진입 후 사이드바에서 사용할 엔진을 고르고 API 키를 입력하면 바로 활성화됩니다.
         """,
         "start_btn": "🚀 설정 확인 및 번역기 시작하기",
         "sidebar_title": "⚙️ 엔진 설정 및 안내",
@@ -142,16 +151,26 @@ TEXTS = {
         "spinner_img": "이미지에서 텍스트를 추출하고 번역하는 중입니다...",
         "success_res": "✨ 번역 결과:",
         "success_img": "✨ 이미지 분석 및 번역 결과:",
-        "error_msg": "❌ 번역 중 에러가 발생했습니다: "
+        "error_msg": "❌ 번역 중 에러가 발생했습니다: ",
+        "summary_section": "⚡ 번역 내용 및 일정 요약 (딸각 리포트)",
+        "summary_btn": "✨ 기한·날짜·시간·장소 및 내용 요약 리포트 생성"
     },
     "영어 (English)": {
         "title": "🌐 Multi-Engine Academic Translator",
-        "subtitle": "Welcome! Please review the guidelines before starting.",
+        "subtitle": "Welcome! Please review the service description and API guidelines before starting.",
         "lang_label": "Select the target output language for translation:",
-        "guide_title": "📋 Service Guidelines & Instructions",
+        "guide_title": "📋 Service Guidelines & Detailed Description",
         "guide_content": """
-        ### 📌 Service Overview & Operation
-        This translator supports **multi-engine translation**, **side-by-side comparison**, and **image OCR translation**.
+### 📌 1. App Description
+- **Multi-Engine Integration**: Switch between Free Machine Translation, **Google Gemini AI**, and **DeepL**.
+- **Comparison Mode**: Compare standard machine translation and Gemini AI translation side-by-side.
+- **Image OCR Translation**: Upload screenshots, textbook pages, or papers for text extraction and translation.
+
+### 🔑 2. API Key Setup Guide
+- **Free Machine Translation**: Available instantly without an API key.
+- **Google Gemini API**: Required for image OCR and advanced AI translation.
+  - 🔗 Get your free key at [Google AI Studio Link](https://aistudio.google.com/).
+- **DeepL API**: Enter your DeepL API key in the sidebar to use DeepL.
         """,
         "start_btn": "🚀 Confirm Settings & Start Translator",
         "sidebar_title": "⚙️ Engine Settings & Info",
@@ -173,7 +192,9 @@ TEXTS = {
         "spinner_img": "Extracting text and translating image...",
         "success_res": "✨ Translation Result:",
         "success_img": "✨ Image Translation Result:",
-        "error_msg": "❌ An error occurred: "
+        "error_msg": "❌ An error occurred: ",
+        "summary_section": "⚡ Translation & Schedule Summary",
+        "summary_btn": "✨ Generate Summary Report (Deadline, Date, Time, Location)"
     }
 }
 
@@ -181,11 +202,11 @@ lang_choice = st.session_state.get("target_lang", "한국어 (Korean)")
 t = TEXTS.get(lang_choice, TEXTS["한국어 (Korean)"])
 
 # ---------------------------------------------------------
-# [1단계] 메인 첫 화면
+# [1단계] 메인 첫 화면 (안내 및 설정)
 # ---------------------------------------------------------
 if not st.session_state.started:
     st.title("🌐 스마트 학사 번역기")
-    st.subheader("환영합니다! 언어 설정과 가이드라인을 확인해 주세요.")
+    st.subheader("환영합니다! 언어 설정과 API 가이드라인을 확인해 주세요.")
     
     st.divider()
 
@@ -218,7 +239,14 @@ else:
     st.title(t['title'])
     
     st.sidebar.title(t['sidebar_title'])
-    engine_choice = st.sidebar.selectbox(t['engine_select'], ["기본 자동 기계번역 (키 불필요)", "Google Gemini", "DeepL"])
+    
+    # 사이드바 엔진 선택란 (괄호 안에 각 엔진의 특징 명시)
+    engine_options = [
+        "기본 자동 기계번역 (키 불필요, 빠른 속도)", 
+        "Google Gemini (문맥 및 전공 이해도 높음)", 
+        "DeepL (압도적 자연스러움)"
+    ]
+    engine_choice = st.sidebar.selectbox(t['engine_select'], engine_options)
     api_key = st.sidebar.text_input(t['api_input'], type="password")
     
     st.sidebar.markdown(f"**현재 엔진:** `{engine_choice}`")
@@ -257,6 +285,7 @@ else:
             if not user_text.strip():
                 st.warning(t['warning_text'])
             else:
+                translated_output = ""
                 if is_compare:
                     if not api_key:
                         st.warning("⚠️ 비교 모드에서 Gemini AI 번역 결과를 함께 보려면 사이드바에 **Gemini API 키**를 입력해 주세요.")
@@ -277,58 +306,4 @@ else:
                             with st.spinner("Gemini AI 번역 실행 중..."):
                                 try:
                                     prompt = f"다음 텍스트를 {lang_name}로 번역해줘. 어색한 직역투를 지우고 학술/전공 서적 스타일로 매끄럽게 번역 결과만 출력해줘:\n\n{user_text}"
-                                    ai_res = generate_gemini_auto(api_key, prompt)
-                                    st.success(ai_res)
-                                except Exception as e:
-                                    st.error(f"Gemini AI 오류: {e}")
-
-                else:
-                    try:
-                        if engine_choice == "DeepL" and api_key:
-                            translator = deepl.Translator(api_key)
-                            deepl_codes = {"한국어 (Korean)": "KO", "영어 (English)": "EN-US", "스페인어 (Spanish)": "ES", "러시아어 (Russian)": "RU", "일본어 (Japanese)": "JA"}
-                            with st.spinner(t['spinner_text']):
-                                result = translator.translate_text(user_text, target_lang=deepl_codes.get(lang_name, "EN-US"))
-                            st.success(t['success_res'])
-                            st.write(result.text)
-                        
-                        elif engine_choice == "Google Gemini" and api_key:
-                            prompt = f"다음 텍스트를 {lang_name}로 번역해줘. 어색한 직역투를 지우고 매끄러운 자연스러운 표현으로 번역 결과만 출력해줘:\n\n{user_text}"
-                            with st.spinner(t['spinner_text']):
-                                translated_res = generate_gemini_auto(api_key, prompt)
-                            st.success(t['success_res'])
-                            st.write(translated_res)
-                            
-                        else:
-                            with st.spinner(t['spinner_text']):
-                                translated_text = free_google_translate(user_text, target_code)
-
-                            st.success(t['success_res'])
-                            st.write(translated_text)
-                            
-                    except Exception as e:
-                        st.error(f"{t['error_msg']}{e}")
-
-    # --- [탭 2: 이미지 번역] ---
-    with tab2:
-        st.header(t['img_header'])
-        uploaded_file = st.file_uploader(t['img_prompt'], type=["png", "jpg", "jpeg"])
-        
-        if uploaded_file is not None:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="업로드한 이미지", use_container_width=True)
-            
-            if st.button(t['img_btn'], use_container_width=True):
-                if not api_key:
-                    st.warning("⚠️ 이미지 OCR 및 AI 번역을 이용하려면 사이드바에 **Google Gemini API 키**를 입력해 주세요.")
-                else:
-                    try:
-                        prompt = f"이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, {lang_name}로 매끄럽게 번역해줘. HTML 태그(<u> 등)나 어색한 직역투(~하는 것입니다)는 완전히 지우고, 볼드체(**텍스트**)와 한국어 문맥에 맞는 자연스러운 학술/출제 지문 어조로 깔끔하게 출력해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어 출력해줘."
-                        
-                        with st.spinner(t['spinner_img']):
-                            translated_img_res = generate_gemini_auto(api_key, prompt, image)
-                            
-                        st.success(t['success_img'])
-                        st.markdown(translated_img_res)
-                    except Exception as e:
-                        st.error(f"{t['error_msg']}{e}")
+                                    ai_res = generate
