@@ -1,6 +1,7 @@
 import os
+import json
+import urllib.request
 import streamlit as st
-from google import genai
 
 # 페이지 기본 설정
 st.set_page_config(
@@ -82,7 +83,7 @@ TRANSLATIONS = {
     }
 }
 
-# 사이드바 설정 (선택란 및 API 키 입력)
+# 사이드바 설정
 st.sidebar.header("🛠️ 옵션 설정")
 
 selected_lang = st.sidebar.selectbox(
@@ -99,7 +100,6 @@ user_api_key = st.sidebar.text_input(
     help=t["api_key_help"]
 )
 
-# API 키 설정 로직
 if user_api_key:
     os.environ["GEMINI_API_KEY"] = user_api_key
 
@@ -124,7 +124,7 @@ st.title(t["title"])
 st.markdown(f"**Selected Model:** `{selected_model}` | **Feature:** `{selected_display_feature}`")
 st.markdown("---")
 
-# 기능별 가이드라인 데이터 (중괄호 이스케이프 처리 완료)
+# 기능별 가이드라인 데이터 (requests 없이 urllib 기반 REST API 예시 제공)
 GUIDELINES = {
     "Text Generation": {
         "overview": {
@@ -132,21 +132,25 @@ GUIDELINES = {
             "English (EN)": "Performs basic text generation and multi-turn chat.",
             "Español (ES)": "Realiza generación de texto básica y chat de múltiples turnos."
         },
-        "code": f"""from google import genai
+        "code": f"""import urllib.request
+import json
 import os
 
-# os.environ["GEMINI_API_KEY"] = "YOUR_API_KEY"
-client = genai.Client()
+api_key = os.environ.get("GEMINI_API_KEY")
+url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={{api_key}}"
 
-response = client.models.generate_content(
-    model="{selected_model}",
-    contents="Explain quantum computing in simple terms.",
-)
-print(response.text)""",
+headers = {{'Content-Type': 'application/json'}}
+data = {{
+    "contents": [{{"parts": [{{"text": "Explain quantum computing in simple terms."}}]}}]
+}}
+
+req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
+with urllib.request.urlopen(req) as response:
+    print(response.read().decode('utf-8'))""",
         "tips": {
-            "한국어 (KO)": "- `genai.Client()`는 환경 변수 `GEMINI_API_KEY`를 자동으로 감지합니다.\n- 시스템 프롬프트를 활용하여 모델의 페르소나를 고정하세요.",
-            "English (EN)": "- `genai.Client()` automatically detects the `GEMINI_API_KEY` environment variable.\n- Use system_instruction to fix the model's persona.",
-            "Español (ES)": "- `genai.Client()` detecta automáticamente la variable de entorno `GEMINI_API_KEY`."
+            "한국어 (KO)": "- 외부 패키지 설치 없이 파이썬 내장 `urllib` 라이브러리로 안전하게 호출할 수 있습니다.",
+            "English (EN)": "- You can safely call it using Python's built-in `urllib` library without installing external packages.",
+            "Español (ES)": "- Puedes llamarlo de forma segura usando la librería integrada `urllib` de Python."
         }
     },
     "Multimodal": {
@@ -155,21 +159,17 @@ print(response.text)""",
             "English (EN)": "Accepts media data like images and audio for analysis.",
             "Español (ES)": "Acepta datos multimedia como imágenes y audio para análisis."
         },
-        "code": f"""from google import genai
-from PIL import Image
+        "code": f"""# 멀티모달 처리 시 Base64 인코딩을 거쳐 REST API 페이로드에 담아 전송할 수 있습니다.
+import base64
 
-client = genai.Client()
-image = Image.open('sample.jpg')
-
-response = client.models.generate_content(
-    model="{selected_model}",
-    contents=[image, "Describe this image in detail."],
-)
-print(response.text)""",
+with open('sample.jpg', 'rb') as f:
+    image_bytes = f.read()
+encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+print("Base64 Encoded ready for payload!")""",
         "tips": {
-            "한국어 (KO)": "- 대용량 파일은 해상도 최적화가 필요할 수 있습니다.",
-            "English (EN)": "- Large files may require resolution optimization.",
-            "Español (ES)": "- Los archivos grandes pueden requerir optimización de resolución."
+            "한국어 (KO)": "- 대용량 파일은 Base64로 변환하여 REST 페이로드에 포함시킵니다.",
+            "English (EN)": "- Large files are converted to Base64 and included in the REST payload.",
+            "Español (ES)": "- Los archivos grandes se convierten a Base64 y se incluyen en la carga útil."
         }
     },
     "Structured Outputs": {
@@ -178,54 +178,48 @@ print(response.text)""",
             "English (EN)": "Forces structured JSON schema output.",
             "Español (ES)": "Obliga a una salida de esquema JSON estructurado."
         },
-        "code": f"""from google import genai
-from pydantic import BaseModel
-
-class Recipe(BaseModel):
-    recipe_name: str
-    ingredients: list[str]
-
-client = genai.Client()
-response = client.models.generate_content(
-    model="{selected_model}",
-    contents="List a recipe for chocolate chip cookies.",
-    config={{
-        'response_mime_type': 'application/json',
-        'response_schema': Recipe,
+        "code": f"""# REST API 요청 시 generationConfig 내에 responseMimeType과 responseSchema를 지정합니다.
+config = {{
+    "responseMimeType": "application/json",
+    "responseSchema": {{
+        "type": "OBJECT",
+        "properties": {{
+            "recipe_name": {{"type": "STRING"}},
+            "ingredients": {{"type": "ARRAY", "items": {{"type": "STRING"}}}}
+        }},
+        "required": ["recipe_name", "ingredients"]
     }}
-)
-print(response.text)""",
+}}""",
         "tips": {
-            "한국어 (KO)": "- Pydantic 모델을 활용해 타입 안전성을 확보하세요.",
-            "English (EN)": "- Ensure type safety using Pydantic models.",
-            "Español (ES)": "- Asegure la seguridad de tipos usando modelos Pydantic."
+            "한국어 (KO)": "- JSON Schema 규격을 명확히 정의하면 일관된 구조의 응답을 보장받습니다.",
+            "English (EN)": "- Clearly defining the JSON Schema ensures consistent structural responses.",
+            "Español (ES)": "- Definir claramente el esquema JSON garantiza respuestas estructuradas coherentes."
         }
     },
     "Function Calling": {
         "overview": {
-            "한국어 (KO)": "커스텀 함수를 모델이 직접 호출하도록 연동합니다.",
-            "English (EN)": "Integrates custom functions for model invocation.",
-            "Español (ES)": "Integra funciones personalizadas para invocación del modelo."
+            "한국어 (KO)": "커스텀 함수 선언을 모델에 전달하여 툴 호출을 유도합니다.",
+            "English (EN)": "Passes custom function declarations to the model to trigger tool calls.",
+            "Español (ES)": "Pasa declaraciones de funciones personalizadas al modelo."
         },
-        "code": f"""from google import genai
-
-def get_current_weather(location: str):
-    \"\"\"Get the current weather for a given location.\"\"\"
-    return "Sunny, 24°C"
-
-client = genai.Client()
-response = client.models.generate_content(
-    model="{selected_model}",
-    contents="What's the weather like in Seoul?",
-    config={{
-        'tools': [get_current_weather]
-    }}
-)
-print(response.function_calls)""",
+        "code": f"""# tools 파라미터를 통해 함수 선언 스키마를 페이로드에 포함합니다.
+tools = [{{
+    "functionDeclarations": [{{
+        "name": "get_current_weather",
+        "description": "Get the current weather for a given location.",
+        "parameters": {{
+            "type": "OBJECT",
+            "properties": {{
+                "location": {{"type": "STRING"}}
+            }},
+            "required": ["location"]
+        }}
+    }}]
+}}]""",
         "tips": {
-            "한국어 (KO)": "- 상세한 독스트링(Docstring) 작성이 핵심입니다.",
-            "English (EN)": "- Detailed docstrings are crucial.",
-            "Español (ES)": "- Los docstrings detallados son cruciales."
+            "한국어 (KO)": "- 선언된 함수의 설명을 상세히 적을수록 정확한 파라미터 추출이 가능합니다.",
+            "English (EN)": "- Detailed function descriptions allow for precise parameter extraction.",
+            "Español (ES)": "- Las descripciones detalladas de funciones permiten una extracción precisa."
         }
     }
 }
@@ -252,23 +246,23 @@ if st.button(t["summary_btn"], type="primary"):
         if selected_lang == "한국어 (KO)":
             summary_html = f"""
             - **📅 날짜 (Date)**: 2026년 10월 15일
-            - **⏰ 시간 (Time)**: 오후 12시 56분
+            - **⏰ 시간 (Time)**: 오후 1시 00분
             - **📍 장소 (Location)**: 개발 워크스페이스
-            - **📝 내용 요약 (Core Summary)**: **{selected_display_feature}** 기능 가이드 및 API 키 인증 설정 확인 완료. (API 키 입력 여부: {'입력됨' if user_api_key else '미입력'})
+            - **📝 내용 요약 (Core Summary)**: **{selected_display_feature}** REST API 가이드 및 인증 확인 완료. (API 키 입력 여부: {'입력됨' if user_api_key else '미입력'})
             """
         elif selected_lang == "Español (ES)":
             summary_html = f"""
             - **📅 Fecha**: 15 de octubre de 2026
-            - **⏰ Hora**: 12:56 PM
+            - **⏰ Hora**: 1:00 PM
             - **📍 Lugar**: Entorno de Desarrollo
-            - **📝 Resumen**: Guía de **{selected_display_feature}** y configuración de API Key verificadas.
+            - **📝 Resumen**: Guía de REST API de **{selected_display_feature}** verificada.
             """
         else:
             summary_html = f"""
             - **📅 Date**: October 15, 2026
-            - **⏰ Time**: 12:56 PM
+            - **⏰ Time**: 1:00 PM
             - **📍 Location**: Development Workspace
-            - **📝 Core Summary**: Verified **{selected_display_feature}** guide and API Key authentication setup.
+            - **📝 Core Summary**: Verified **{selected_display_feature}** REST API guide.
             """
 
     st.success(t["summary_result_title"])
