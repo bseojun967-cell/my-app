@@ -120,13 +120,13 @@ TEXTS = {
         "guide_title": "📋 서비스 이용 가이드라인 및 상세 설명",
         "guide_content": """
 ### 📌 1. 앱 상세 설명
-- **다중 엔진 통합**: 기본 기계번역, **Google Gemini AI 번역**, **DeepL 번역**을 입맛에 맞게 골라 쓸 수 있습니다.
+- **다중 엔진 통합**: 기본 기계번역, **Google Gemini AI 번역**, **DeepL 번역(압도적 자연스러움)**을 입맛에 맞게 골라 쓸 수 있습니다.
 - **텍스트 비교 모드**: 일반 기계번역 결과와 Gemini AI의 전공/학술 특화 번역을 한 화면에서 나란히 비교할 수 있습니다.
 - **이미지 OCR 번역**: 원서, 전공 교재, 과제 캡처 이미지 등을 업로드하면 텍스트를 추출하고 자연스럽게 번역해 줍니다.
 
 ### 🔑 2. API 키 발급 및 설정 가이드
 - **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다.
-- **Google Gemini API**: 학술 교재 이미지 분석 및 AI 딸각 요약을 위해 필요합니다.
+- **Google Gemini API**: 학술 교재 이미지 분석 및 AI 요약 리포트를 위해 필요합니다.
   - 🔗 [Google AI Studio 바로가기 (API 키 발급 링크)](https://aistudio.google.com/) 에서 무료로 발급받을 수 있습니다.
 - **DeepL API**: 압도적 자연스러움의 번역을 위해 필요합니다.
   - 🔗 [DeepL API 무료/유료 계정 발급 링크](https://www.deepl.com/pro-api) 에서 발급받을 수 있습니다.
@@ -153,7 +153,7 @@ TEXTS = {
         "success_res": "✨ 번역 결과:",
         "success_img": "✨ 이미지 분석 및 번역 결과:",
         "error_msg": "❌ 번역 중 에러가 발생했습니다: ",
-        "summary_section": "⚡ AI 딸각 요약 리포트"
+        "summary_section": "⚡ AI 요약 리포트"
     },
     "영어 (English)": {
         "title": "🌐 Multi-Engine Academic Translator",
@@ -162,13 +162,13 @@ TEXTS = {
         "guide_title": "📋 Service Guidelines & Detailed Description",
         "guide_content": """
 ### 📌 1. App Description
-- **Multi-Engine Integration**: Switch between Free Machine Translation, **Google Gemini AI**, and **DeepL**.
+- **Multi-Engine Integration**: Switch between Free Machine Translation, **Google Gemini AI**, and **DeepL (Ultra-natural)**.
 - **Comparison Mode**: Compare standard machine translation and Gemini AI translation side-by-side.
 - **Image OCR Translation**: Upload screenshots, textbook pages, or papers for text extraction and translation.
 
 ### 🔑 2. API Key Setup Guide
 - **Free Machine Translation**: Available instantly without an API key.
-- **Google Gemini API**: Required for image OCR and AI smart summaries.
+- **Google Gemini API**: Required for image OCR and AI summary reports.
   - 🔗 Get your free key at [Google AI Studio Link](https://aistudio.google.com/).
 - **DeepL API**: Required for ultra-natural translations.
   - 🔗 Get your DeepL API key at [DeepL API Link](https://www.deepl.com/pro-api).
@@ -180,7 +180,7 @@ TEXTS = {
         "current_lang": "Current Target Language:",
         "back_btn": "🔄 Return to Home",
         "tab1": "📝 Text Translation & Compare",
-        "tab2": "🖼️ 이미지 번역 (Gemini)",
+        "tab2": "🖼️ Image Translation (Gemini)",
         "text_header": "Text Translation",
         "text_prompt": "Enter text to translate:",
         "text_btn": "Run Translation",
@@ -194,7 +194,7 @@ TEXTS = {
         "success_res": "✨ Translation Result:",
         "success_img": "✨ Image Translation Result:",
         "error_msg": "❌ An error occurred: ",
-        "summary_section": "⚡ AI Smart Summary Report"
+        "summary_section": "⚡ AI Summary Report"
     }
 }
 
@@ -348,14 +348,13 @@ else:
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
 
-                # ⚡ 어떤 엔진을 쓰든 번역 완료 후, 사이드바에 입력된 Gemini API 키를 활용해 AI 딸각 요약 리포트 자동 생성
+                # ⚡ 번역 완료 후 AI 요약 리포트 자동 생성
                 if has_success and final_translated_text:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
                     
                     summary_output = ""
-                    # 요약은 Gemini API 키가 입력되어 있으면 AI가 분석, 없으면 입력한 Gemini 키 안내 및 기본 요약 제공
-                    if api_key and ("DeepL" in engine_choice or "기본" in engine_choice or "Google Gemini" in engine_choice):
+                    if api_key:
                         try:
                             summary_prompt = f"""
 다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.
@@ -373,61 +372,11 @@ else:
                         if not api_key:
                             summary_output = f"""
 - **📝 내용 요약**: 번역이 성공적으로 완료되었습니다. 
-- **💡 팁**: 사이드바에 **Gemini API 키**를 입력하시면, AI가 텍스트 내의 일정·시험범위 등을 자동으로 분석하여 똑똑한 **딸각 요약 리포트**를 제공해 줍니다!
+- **💡 팁**: 사이드바에 **Gemini API 키**를 입력하시면, AI가 텍스트 내의 일정·시험범위 등을 자동으로 분석하여 똑똑한 **AI 요약 리포트**를 제공해 줍니다!
 - **⚙️ 사용 엔진**: `{engine_choice}`
 - **🌐 목표 언어**: `{lang_name}`
                             """
                         else:
                             summary_output = f"""
 - **📝 내용 요약**: 입력된 학사 텍스트가 성공적으로 번역되었습니다.
-- **⚙️ 사용 엔진**: `{engine_choice}`
-- **🌐 목표 언어**: `{lang_name}`
-                            """
-
-                    st.info(summary_output)
-
-    # --- [탭 2: 이미지 번역] ---
-    with tab2:
-        st.header(t['img_header'])
-        uploaded_file = st.file_uploader(t['img_prompt'], type=["png", "jpg", "jpeg"])
-        
-        if uploaded_file is not None:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="업로드한 이미지", use_container_width=True)
-            
-            if st.button(t['img_btn'], use_container_width=True):
-                if not api_key:
-                    st.warning("⚠️ 이미지 OCR 및 AI 번역을 이용하려면 사이드바에 **Google Gemini API 키**를 입력해 주세요.")
-                else:
-                    try:
-                        prompt = f"이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, {lang_name}로 매끄럽게 번역해줘. HTML 태그(<u> 등)나 어색한 직역투(~하는 것입니다)는 완전히 지우고, 볼드체(**텍스트**)와 한국어 문맥에 맞는 자연스러운 학술/출제 지문 어조로 깔끔하게 출력해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어 출력해줘."
-                        
-                        with st.spinner(t['spinner_img']):
-                            translated_img_res = generate_gemini_auto(api_key, prompt, image)
-                            
-                        st.success(t['success_img'])
-                        st.markdown(translated_img_res)
-
-                        # 이미지 내용 기반 AI 유동적 요약
-                        st.markdown("---")
-                        st.subheader(t['summary_section'])
-                        try:
-                            img_summary_prompt = f"""
-다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.
-이미지 내용에 기한, 날짜, 시간, 장소, 범위 등이 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.
-
-[이미지 번역 결과]
-{translated_img_res}
-"""
-                            img_summary_output = generate_gemini_auto(api_key, img_summary_prompt)
-                        except Exception:
-                            img_summary_output = f"""
-- **📝 내용 요약**: 이미지 속 텍스트가 성공적으로 추출 및 번역되었습니다.
-- **⚙️ 사용 엔진**: Google Gemini (비전 OCR & 번역)
-- **🌐 목표 언어**: `{lang_name}`
-                            """
-
-                        st.info(img_summary_output)
-
-                    except Exception as e:
-                        st.error(f"{t['error_msg']}{e}")
+- **
