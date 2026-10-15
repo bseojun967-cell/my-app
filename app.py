@@ -45,7 +45,7 @@ def free_google_translate(text, target_lang_code):
     return translated_text if translated_text else text
 
 # ---------------------------------------------------------
-# 2. 계정별 동작 가능한 모델을 자동 감지하는 Gemini REST 호출 함수 (RGBA 에러 패치 적용 완료)
+# 2. 계정별 동작 가능한 모델을 자동 감지하는 Gemini REST 호출 함수
 # ---------------------------------------------------------
 def generate_gemini_auto(api_key, prompt, image=None):
     clean_key = api_key.strip()
@@ -116,7 +116,6 @@ def generate_gemini_auto(api_key, prompt, image=None):
 def smart_fallback_summary(text, engine_name, lang_name):
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
-    # 키워드 기반 추출 시도
     dates = []
     locations = []
     topics = []
@@ -140,7 +139,6 @@ def smart_fallback_summary(text, engine_name, lang_name):
     if topics:
         summary_md += "- **📚 주요 범위/내용**: " + " / ".join(topics[:2]) + "\n"
         
-    # 만약 특별히 잡힌 게 없다면 첫 줄들을 핵심 요약으로 대체
     if not dates and not locations and not topics and lines:
         summary_md += "- **📝 핵심 요약**: " + lines[0] + "\n"
         
@@ -215,7 +213,7 @@ TEXTS = {
         "current_lang": "Current Target Language:",
         "back_btn": "🔄 Return to Home",
         "tab1": "📝 Text Translation & Compare",
-        "tab2": "🖼️ 이미지 번역 (Gemini)",
+        "tab2": "🖼️ Image Translation (Gemini)",
         "text_header": "Text Translation",
         "text_prompt": "Enter text to translate:",
         "text_btn": "Run Translation",
@@ -383,7 +381,7 @@ else:
                     except Exception as e:
                         st.error(t['error_msg'] + str(e))
 
-                # ⚡ 어떤 엔진을 쓰든, API 키 유무와 무관하게 무조건 AI 요약 리포트 자동 생성
+                # ⚡ 엔진 종류나 API 키 유무와 무관하게 무조건 AI 요약 리포트 자동 생성
                 if has_success and final_translated_text:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
@@ -391,4 +389,47 @@ else:
                     summary_output = ""
                     if api_key:
                         try:
-                            summary_prompt = "다음 번역된 텍스트
+                            summary_prompt = "다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n원문에 명시된 내용(예: 기한, 날짜, 시간, 장소, 시험 범위 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n[번역된 텍스트]\n" + final_translated_text
+                            summary_output = generate_gemini_auto(api_key, summary_prompt)
+                        except Exception:
+                            summary_output = ""
+
+                    if not summary_output:
+                        summary_output = smart_fallback_summary(final_translated_text, engine_choice, lang_name)
+
+                    st.info(summary_output)
+
+    # --- [탭 2: 이미지 번역] ---
+    with tab2:
+        st.header(t['img_header'])
+        uploaded_file = st.file_uploader(t['img_prompt'], type=["png", "jpg", "jpeg"])
+        
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="업로드한 이미지", use_container_width=True)
+            
+            if st.button(t['img_btn'], use_container_width=True):
+                if not api_key:
+                    st.warning("⚠️ 이미지 OCR 및 AI 번역을 이용하려면 사이드바에 **Google Gemini API 키**를 입력해 주세요.")
+                else:
+                    try:
+                        prompt = "이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, " + lang_name + "로 매끄럽게 번역해줘. HTML 태그(<u> 등)나 어색한 직역투(~하는 것입니다)는 완전히 지우고, 볼드체(**텍스트**)와 한국어 문맥에 맞는 자연스러운 학술/출제 지문 어조로 깔끔하게 출력해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어 출력해줘."
+                        
+                        with st.spinner(t['spinner_img']):
+                            translated_img_res = generate_gemini_auto(api_key, prompt, image)
+                            
+                        st.success(t['success_img'])
+                        st.markdown(translated_img_res)
+
+                        st.markdown("---")
+                        st.subheader(t['summary_section'])
+                        try:
+                            img_summary_prompt = "다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.\n이미지 내용에 기한, 날짜, 시간, 장소, 범위 등이 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.\n\n[이미지 번역 결과]\n" + translated_img_res
+                            img_summary_output = generate_gemini_auto(api_key, img_summary_prompt)
+                        except Exception:
+                            img_summary_output = smart_fallback_summary(translated_img_res, "Google Gemini (Vision OCR)", lang_name)
+
+                        st.info(img_summary_output)
+
+                    except Exception as e:
+                        st.error(t['error_msg'] + str(e))
