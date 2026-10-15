@@ -128,7 +128,8 @@ TEXTS = {
 - **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다.
 - **Google Gemini API**: 학술 교재 이미지 분석 및 고품질 AI 번역을 위해 필요합니다.
   - 🔗 [Google AI Studio 바로가기 (API 키 발급 링크)](https://aistudio.google.com/) 에서 무료로 발급받을 수 있습니다.
-- **DeepL API**: DeepL 유료/무료 계정의 API 키를 입력하여 압도적인 자연스러움의 번역을 이용할 수 있습니다.
+- **DeepL API**: 압도적 자연스러움의 번역을 위해 필요합니다.
+  - 🔗 [DeepL API 무료/유료 계정 발급 링크](https://www.deepl.com/pro-api) 에서 발급받을 수 있습니다.
 - **사용 방법**: 첫 화면 진입 후 사이드바에서 사용할 엔진을 고르고 API 키를 입력하면 바로 활성화됩니다.
         """,
         "start_btn": "🚀 설정 확인 및 번역기 시작하기",
@@ -170,7 +171,8 @@ TEXTS = {
 - **Free Machine Translation**: Available instantly without an API key.
 - **Google Gemini API**: Required for image OCR and advanced AI translation.
   - 🔗 Get your free key at [Google AI Studio Link](https://aistudio.google.com/).
-- **DeepL API**: Enter your DeepL API key in the sidebar to use DeepL.
+- **DeepL API**: Required for ultra-natural translations.
+  - 🔗 Get your DeepL API key at [DeepL API Link](https://www.deepl.com/pro-api).
         """,
         "start_btn": "🚀 Confirm Settings & Start Translator",
         "sidebar_title": "⚙️ Engine Settings & Info",
@@ -419,8 +421,4 @@ else:
                                   - **Target Language**: `{lang_name}`
                                   - **Summary**: Successfully extracted text and translated the uploaded academic image.
                                 """
-                            st.success("📋 요약 리포트 생성 완료")
-                            st.markdown(summary_report)
-
-                    except Exception as e:
-                        st.error(f"{t['error_msg']}{e}")
+                            st.success("📋 요약 리포
