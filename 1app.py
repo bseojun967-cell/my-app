@@ -99,7 +99,7 @@ user_api_key = st.sidebar.text_input(
     help=t["api_key_help"]
 )
 
-# API 키 설정 로직 (입력된 키가 있으면 환경변수나 client 생성 시 반영)
+# API 키 설정 로직
 if user_api_key:
     os.environ["GEMINI_API_KEY"] = user_api_key
 
@@ -124,7 +124,7 @@ st.title(t["title"])
 st.markdown(f"**Selected Model:** `{selected_model}` | **Feature:** `{selected_display_feature}`")
 st.markdown("---")
 
-# 기능별 가이드라인 데이터 (코드 내에 API 키 설정법 반영)
+# 기능별 가이드라인 데이터 (중괄호 이스케이프 처리 완료)
 GUIDELINES = {
     "Text Generation": {
         "overview": {
@@ -135,7 +135,7 @@ GUIDELINES = {
         "code": f"""from google import genai
 import os
 
-# os.environ["GEMINI_API_KEY"] = "YOUR_API_KEY" # 키가 환경변수에 없을 경우 지정
+# os.environ["GEMINI_API_KEY"] = "YOUR_API_KEY"
 client = genai.Client()
 
 response = client.models.generate_content(
@@ -192,8 +192,8 @@ response = client.models.generate_content(
     config={{
         'response_mime_type': 'application/json',
         'response_schema': Recipe,
-    }},
-),
+    }}
+)
 print(response.text)""",
         "tips": {
             "한국어 (KO)": "- Pydantic 모델을 활용해 타입 안전성을 확보하세요.",
@@ -221,7 +221,7 @@ response = client.models.generate_content(
         'tools': [get_current_weather]
     }}
 )
-print(response.function_calls)",
+print(response.function_calls)""",
         "tips": {
             "한국어 (KO)": "- 상세한 독스트링(Docstring) 작성이 핵심입니다.",
             "English (EN)": "- Detailed docstrings are crucial.",
@@ -252,21 +252,21 @@ if st.button(t["summary_btn"], type="primary"):
         if selected_lang == "한국어 (KO)":
             summary_html = f"""
             - **📅 날짜 (Date)**: 2026년 10월 15일
-            - **⏰ 시간 (Time)**: 오후 12시 51분
+            - **⏰ 시간 (Time)**: 오후 12시 56분
             - **📍 장소 (Location)**: 개발 워크스페이스
-            - **📝 내용 요약 (Core Summary)**: **{selected_display_feature}** 기능 가이드 및 API 키 인증 설정 방법 확인 완료. (API 키 입력 여부: {'입력됨' if user_api_key else '미입력'})
+            - **📝 내용 요약 (Core Summary)**: **{selected_display_feature}** 기능 가이드 및 API 키 인증 설정 확인 완료. (API 키 입력 여부: {'입력됨' if user_api_key else '미입력'})
             """
         elif selected_lang == "Español (ES)":
             summary_html = f"""
             - **📅 Fecha**: 15 de octubre de 2026
-            - **⏰ Hora**: 12:51 PM
+            - **⏰ Hora**: 12:56 PM
             - **📍 Lugar**: Entorno de Desarrollo
             - **📝 Resumen**: Guía de **{selected_display_feature}** y configuración de API Key verificadas.
             """
         else:
             summary_html = f"""
             - **📅 Date**: October 15, 2026
-            - **⏰ Time**: 12:51 PM
+            - **⏰ Time**: 12:56 PM
             - **📍 Location**: Development Workspace
             - **📝 Core Summary**: Verified **{selected_display_feature}** guide and API Key authentication setup.
             """
