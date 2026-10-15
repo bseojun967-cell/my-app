@@ -153,7 +153,7 @@ TEXTS = {
         "success_res": "✨ 번역 결과:",
         "success_img": "✨ 이미지 분석 및 번역 결과:",
         "error_msg": "❌ 번역 중 에러가 발생했습니다: ",
-        "summary_section": "⚡ 번역 내용 및 일정 요약 (딸각 리포트)"
+        "summary_section": "⚡ AI 딸각 요약 리포트"
     },
     "영어 (English)": {
         "title": "🌐 Multi-Engine Academic Translator",
@@ -194,7 +194,7 @@ TEXTS = {
         "success_res": "✨ Translation Result:",
         "success_img": "✨ Image Translation Result:",
         "error_msg": "❌ An error occurred: ",
-        "summary_section": "⚡ Translation & Schedule Summary"
+        "summary_section": "⚡ AI Smart Summary Report"
     }
 }
 
@@ -284,7 +284,9 @@ else:
             if not user_text.strip():
                 st.warning(t['warning_text'])
             else:
-                translated_output = ""
+                final_translated_text = ""
+                has_success = False
+
                 if is_compare:
                     if not api_key:
                         st.warning("⚠️ 비교 모드에서 Gemini AI 번역 결과를 함께 보려면 사이드바에 **Gemini API 키**를 입력해 주세요.")
@@ -297,6 +299,7 @@ else:
                                 try:
                                     free_res = free_google_translate(user_text, target_code)
                                     st.info(free_res)
+                                    final_translated_text = free_res
                                 except Exception as e:
                                     st.error(f"기계번역 오류: {e}")
                                     
@@ -307,7 +310,8 @@ else:
                                     prompt = f"다음 텍스트를 {lang_name}로 번역해줘. 어색한 직역투를 지우고 학술/전공 서적 스타일로 매끄럽게 번역 결과만 출력해줘:\n\n{user_text}"
                                     ai_res = generate_gemini_auto(api_key, prompt)
                                     st.success(ai_res)
-                                    translated_output = ai_res
+                                    final_translated_text = ai_res
+                                    has_success = True
                                 except Exception as e:
                                     st.error(f"Gemini AI 오류: {e}")
 
@@ -320,7 +324,8 @@ else:
                                 result = translator.translate_text(user_text, target_lang=deepl_codes.get(lang_name, "EN-US"))
                             st.success(t['success_res'])
                             st.write(result.text)
-                            translated_output = result.text
+                            final_translated_text = result.text
+                            has_success = True
                         
                         elif "Google Gemini" in engine_choice and api_key:
                             prompt = f"다음 텍스트를 {lang_name}로 번역해줘. 어색한 직역투를 지우고 매끄러운 자연스러운 표현으로 번역 결과만 출력해줘:\n\n{user_text}"
@@ -328,7 +333,8 @@ else:
                                 translated_res = generate_gemini_auto(api_key, prompt)
                             st.success(t['success_res'])
                             st.write(translated_res)
-                            translated_output = translated_res
+                            final_translated_text = translated_res
+                            has_success = True
                             
                         else:
                             with st.spinner(t['spinner_text']):
@@ -336,39 +342,42 @@ else:
 
                             st.success(t['success_res'])
                             st.write(translated_text)
-                            translated_output = translated_text
+                            final_translated_text = translated_text
+                            has_success = True
                             
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
 
-                # ⚡ 번역 완료 즉시 기한·날짜·시간·장소 및 내용 요약 리포트 자동 출력 (딸각 요약)
-                if translated_output:
+                # ⚡ AI가 텍스트 내용을 분석하여 유동적으로 요약 리포트 생성 (장소나 기한이 없으면 알아서 판단·생략)
+                if has_success:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
-                    if lang_choice == "한국어 (Korean)":
-                        summary_report = f"""
-                        - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/문서 처리 마감일 기준)
-                        - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
-                        - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
-                        - **📍 장소 (Location)**: 학사 워크스페이스 / 온라인 원격 환경
-                        - **📝 내용 요약 포트 (Core Summary)**: 
-                          - **사용 엔진**: `{engine_choice}`
-                          - **목표 언어**: `{lang_name}`
-                          - **번역 내용 핵심 요약**: 입력된 학사 원문/텍스트를 바탕으로 선택한 엔진의 특성을 살려 성공적으로 번역을 완료함.
+                    
+                    summary_output = ""
+                    if api_key:
+                        try:
+                            summary_prompt = f"""
+다음 번역된 텍스트를 분석하여 핵심 요약 리포트를 작성해줘.
+원문에 명시된 내용(예: 기한, 날짜, 시간, 장소 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 과감히 생략하거나 유연하게 작성해줘. 
+결과는 깔끔한 마크다운 불릿 포인트 형태로 요약해줘.
+
+[번역된 텍스트]
+{final_translated_text}
+"""
+                            summary_output = generate_gemini_auto(api_key, summary_prompt)
+                        except Exception:
+                            summary_output = ""
+
+                    # Gemini 요약에 실패했거나 API 키가 없는 경우 기본 안전 요약 출력
+                    if not summary_output:
+                        summary_output = f"""
+- **📝 내용 요약**: 입력된 학사 텍스트가 성공적으로 번역되었습니다.
+- **⚙️ 사용 엔진**: `{engine_choice}`
+- **🌐 목표 언어**: `{lang_name}`
+- *(참고: 텍스트 내에 명시된 일정이나 장소 정보가 없어 기본 요약으로 출력되었습니다.)*
                         """
-                    else:
-                        summary_report = f"""
-                        - **⏳ Deadline**: October 31, 2026
-                        - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
-                        - **⏰ Time**: {datetime.now().strftime("%H:%M")}
-                        - **📍 Location**: Academic Workspace / Remote
-                        - **📝 Core Summary**: 
-                          - **Engine Used**: `{engine_choice}`
-                          - **Target Language**: `{lang_name}`
-                          - **Summary**: Successfully translated the academic text using the selected translation engine.
-                        """
-                    st.success("📋 딸각 요약 리포트 자동 생성 완료")
-                    st.markdown(summary_report)
+
+                    st.info(summary_output)
 
     # --- [탭 2: 이미지 번역] ---
     with tab2:
@@ -392,33 +401,26 @@ else:
                         st.success(t['success_img'])
                         st.markdown(translated_img_res)
 
-                        # 이미지 번역 완료 즉시 요약 리포트 자동 출력
+                        # 이미지 내용 기반 AI 유동적 요약
                         st.markdown("---")
                         st.subheader(t['summary_section'])
-                        if lang_choice == "한국어 (Korean)":
-                            summary_report = f"""
-                            - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/교재 분석 마감일 기준)
-                            - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
-                            - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
-                            - **📍 장소 (Location)**: 학사 워크스페이스 / 이미지 분석 환경
-                            - **📝 내용 요약 포트 (Core Summary)**: 
-                              - **사용 엔진**: Google Gemini (이미지 OCR & 비전 번역)
-                              - **목표 언어**: `{lang_name}`
-                              - **번역 내용 핵심 요약**: 업로드된 이미지 속 전공 교재/원서 텍스트의 OCR 추출 및 학사 맞춤형 번역 완료.
+                        try:
+                            img_summary_prompt = f"""
+다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.
+이미지 내용에 기한, 날짜, 시간, 장소가 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.
+
+[이미지 번역 결과]
+{translated_img_res}
+"""
+                            img_summary_output = generate_gemini_auto(api_key, img_summary_prompt)
+                        except Exception:
+                            img_summary_output = f"""
+- **📝 내용 요약**: 이미지 속 텍스트가 성공적으로 추출 및 번역되었습니다.
+- **⚙️ 사용 엔진**: Google Gemini (비전 OCR & 번역)
+- **🌐 목표 언어**: `{lang_name}`
                             """
-                        else:
-                            summary_report = f"""
-                            - **⏳ Deadline**: October 31, 2026
-                            - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
-                            - **⏰ Time**: {datetime.now().strftime("%H:%M")}
-                            - **📍 Location**: Academic Workspace / Image Analysis
-                            - **📝 Core Summary**: 
-                              - **Engine Used**: Google Gemini (OCR & Vision Translation)
-                              - **Target Language**: `{lang_name}`
-                              - **Summary**: Successfully extracted text and translated the uploaded academic image.
-                            """
-                        st.success("📋 딸각 요약 리포트 자동 생성 완료")
-                        st.markdown(summary_report)
+
+                        st.info(img_summary_output)
 
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
