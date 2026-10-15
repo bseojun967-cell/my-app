@@ -1,9 +1,9 @@
 import streamlit as st
-from google import genai
-from google.genai import types
 import deepl
 import requests
 from PIL import Image
+import io
+import base64
 
 st.set_page_config(page_title="통합 학사 번역기 | Multi-Engine Translator", page_icon="🌐", layout="centered")
 
@@ -43,38 +43,45 @@ def free_google_translate(text, target_lang_code):
     return translated_text if translated_text else text
 
 # ---------------------------------------------------------
-# 2. 최신 공식 google-genai SDK 기반 Gemini 호출 함수
+# 2. 다이렉트 Gemini REST API 호출 함수 (SDK 라이브러리 미사용)
 # ---------------------------------------------------------
-def generate_gemini_response(api_key, prompt, image=None):
-    # 최신 클라이언트 초기화 방식
-    client = genai.Client(api_key=api_key)
+def generate_gemini_direct(api_key, prompt, image=None):
+    # 구글 공식 REST API URL (v1)
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
     
-    # 최신 표준 모델 지정 (gemini-2.5-flash 또는 gemini-2.0-flash 등)
-    model_name = "gemini-2.5-flash"
+    parts = [{"text": prompt}]
     
-    try:
-        if image:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[image, prompt]
-            )
-        else:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt
-            )
-        return response.text
-    except Exception as e:
-        # 혹시 모를 구형 모델명 대비 백업 시도
+    if image:
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        parts.append({
+            "inline_data": {
+                "mime_type": "image/jpeg",
+                "data": img_str
+            }
+        })
+        
+    payload = {
+        "contents": [{
+            "parts": parts
+        }]
+    }
+    
+    headers = {"Content-Type": "application/json"}
+    
+    response = requests.post(url, json=payload, headers=headers, timeout=20)
+    
+    if response.status_code == 200:
+        res_data = response.json()
         try:
-            model_name = "gemini-1.5-flash"
-            if image:
-                response = client.models.generate_content(model=model_name, contents=[image, prompt])
-            else:
-                response = client.models.generate_content(model=model_name, contents=prompt)
-            return response.text
-        except Exception as e2:
-            raise RuntimeError(f"Gemini API 호출 실패: {e2}")
+            return res_data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            raise RuntimeError("Gemini 응답 구조 해석 실패")
+    else:
+        # 에러 메시지 상세 출력
+        err_detail = response.json().get("error", {}).get("message", response.text)
+        raise RuntimeError(f"Gemini API 에러 (상태 코드 {response.status_code}): {err_detail}")
 
 # ---------------------------------------------------------
 # 다국어 텍스트 사전
@@ -232,7 +239,7 @@ else:
                     elif engine_choice == "Google Gemini" and api_key:
                         prompt = f"다음 텍스트를 오직 번역 결과만 깔끔하게 자연스럽고 정확하게 {lang_name}로 번역해줘:\n\n{user_text}"
                         with st.spinner(t['spinner_text']):
-                            translated_res = generate_gemini_response(api_key, prompt)
+                            translated_res = generate_gemini_direct(api_key, prompt)
                         st.success(t['success_res'])
                         st.write(translated_res)
                         
@@ -263,7 +270,7 @@ else:
                         prompt = f"이 이미지 안에 들어있는 텍스트를 추출하고, 추출한 내용을 {lang_name}로 정확하고 자연스럽게 번역해줘. 결과는 [원문 텍스트]와 [번역 결과]로 나누어서 출력해줘."
                         
                         with st.spinner(t['spinner_img']):
-                            translated_img_res = generate_gemini_response(api_key, prompt, image)
+                            translated_img_res = generate_gemini_direct(api_key, prompt, image)
                             
                         st.success(t['success_img'])
                         st.write(translated_img_res)
