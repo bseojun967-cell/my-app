@@ -5,7 +5,6 @@ from PIL import Image
 import io
 import base64
 from datetime import datetime
-import re
 
 st.set_page_config(page_title="통합 학사 번역기 | Multi-Engine Translator", page_icon="🌐", layout="wide")
 
@@ -111,40 +110,6 @@ def generate_gemini_auto(api_key, prompt, image=None):
     raise RuntimeError("모든 Gemini 모델 호출 실패. (상세 에러: " + last_err + ")")
 
 # ---------------------------------------------------------
-# 3. API 키가 없어도 작동하는 스마트 자동 요약 추출기 (파이썬 기본 로직)
-# ---------------------------------------------------------
-def smart_fallback_summary(text, engine_name, lang_name):
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
-    dates = []
-    locations = []
-    topics = []
-    
-    for line in lines:
-        lower_line = line.lower()
-        if any(k in lower_line for k in ['date', '날짜', '일시', 'period', '기간', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', '2026']):
-            dates.append(line)
-        elif any(k in lower_line for k in ['location', '장소', 'room', 'building', '호', '관', 'hall']):
-            locations.append(line)
-        elif any(k in lower_line for k in ['chapter', 'scope', 'topic', '범위', '단원', '과제', 'assignment']):
-            topics.append(line)
-
-    summary_md = "- **⚙️ 사용 엔진**: `" + engine_name + "`\n"
-    summary_md += "- **🌐 목표 언어**: `" + lang_name + "`\n"
-    
-    if dates:
-        summary_md += "- **📅 주요 일정/기한**: " + " / ".join(dates[:2]) + "\n"
-    if locations:
-        summary_md += "- **📍 장소 정보**: " + " / ".join(locations[:2]) + "\n"
-    if topics:
-        summary_md += "- **📚 주요 범위/내용**: " + " / ".join(topics[:2]) + "\n"
-        
-    if not dates and not locations and not topics and lines:
-        summary_md += "- **📝 핵심 요약**: " + lines[0] + "\n"
-        
-    return summary_md
-
-# ---------------------------------------------------------
 # 다국어 텍스트 사전
 # ---------------------------------------------------------
 TEXTS = {
@@ -157,12 +122,13 @@ TEXTS = {
             "### 📌 1. 앱 상세 설명\n"
             "- **다중 엔진 통합**: 기본 기계번역, **Google Gemini AI 번역**, **DeepL 번역(압도적 자연스러움)**을 입맛에 맞게 골라 쓸 수 있습니다.\n"
             "- **텍스트 비교 모드**: 일반 기계번역 결과와 Gemini AI의 전공/학술 특화 번역을 한 화면에서 나란히 비교할 수 있습니다.\n"
-            "- **이미지 OCR 번역**: 원서, 전공 교재, 과제 캡처 이미지 등을 업로드하면 텍스트를 추출하고 자연스럽게 번역해 줍니다.\n\n"
+            "- **이미지 OCR 번역**: 원서, 전공 교재, 과제 캡처 이미지 등을 업로드하면 텍스트를 추출하고 자연스럽게 번역해 줍니다.\n"
+            "- **⚡ AI 요약 리포트**: **Google Gemini 또는 DeepL 엔진** 사용 시, 번역된 텍스트의 핵심 내용과 일정·범위 등을 분석해 주는 요약 리포트가 함께 제공됩니다. *(기본 기계번역 엔진에서는 번역 결과만 제공됩니다)*\n\n"
             "### 🔑 2. API 키 발급 및 설정 가이드\n"
-            "- **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다.\n"
-            "- **Google Gemini API**: 학술 교재 이미지 분석 및 AI 요약 리포트를 위해 필요합니다.\n"
+            "- **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다. (요약 기능 미지원)\n"
+            "- **Google Gemini API**: 학술 교재 이미지 분석 및 **AI 요약 리포트**를 위해 필요합니다.\n"
             "  - 🔗 [Google AI Studio 바로가기 (API 키 발급 링크)](https://aistudio.google.com/) 에서 무료로 발급받을 수 있습니다.\n"
-            "- **DeepL API**: 압도적 자연스러움의 번역을 위해 필요합니다.\n"
+            "- **DeepL API**: 압도적 자연스러움의 번역 및 요약 리포트를 위해 필요합니다.\n"
             "  - 🔗 [DeepL API 무료/유료 계정 발급 링크](https://www.deepl.com/pro-api) 에서 발급받을 수 있습니다.\n"
             "- **사용 방법**: 첫 화면 진입 후 사이드바에서 사용할 엔진을 고르고 API 키를 입력하면 바로 활성화됩니다."
         ),
@@ -198,12 +164,13 @@ TEXTS = {
             "### 📌 1. App Description\n"
             "- **Multi-Engine Integration**: Switch between Free Machine Translation, **Google Gemini AI**, and **DeepL (Ultra-natural)**.\n"
             "- **Comparison Mode**: Compare standard machine translation and Gemini AI translation side-by-side.\n"
-            "- **Image OCR Translation**: Upload screenshots, textbook pages, or papers for text extraction and translation.\n\n"
+            "- **Image OCR Translation**: Upload screenshots, textbook pages, or papers for text extraction and translation.\n"
+            "- **⚡ AI Summary Report**: Available when using **Google Gemini or DeepL engines**. *(Not available for Free Machine Translation)*\n\n"
             "### 🔑 2. API Key Setup Guide\n"
-            "- **Free Machine Translation**: Available instantly without an API key.\n"
+            "- **Free Machine Translation**: Available instantly without an API key. (No summary feature)\n"
             "- **Google Gemini API**: Required for image OCR and AI summary reports.\n"
             "  - 🔗 Get your free key at [Google AI Studio Link](https://aistudio.google.com/).\n"
-            "- **DeepL API**: Required for ultra-natural translations.\n"
+            "- **DeepL API**: Required for ultra-natural translations and summaries.\n"
             "  - 🔗 Get your DeepL API key at [DeepL API Link](https://www.deepl.com/pro-api)."
         ),
         "start_btn": "🚀 Confirm Settings & Start Translator",
@@ -319,6 +286,7 @@ else:
             else:
                 final_translated_text = ""
                 has_success = False
+                is_ai_engine = False
 
                 if is_compare:
                     if not api_key:
@@ -332,7 +300,6 @@ else:
                                 try:
                                     free_res = free_google_translate(user_text, target_code)
                                     st.info(free_res)
-                                    final_translated_text = free_res
                                 except Exception as e:
                                     st.error("기계번역 오류: " + str(e))
                                     
@@ -345,6 +312,7 @@ else:
                                     st.success(ai_res)
                                     final_translated_text = ai_res
                                     has_success = True
+                                    is_ai_engine = True
                                 except Exception as e:
                                     st.error("Gemini AI 오류: " + str(e))
 
@@ -359,6 +327,7 @@ else:
                             st.write(result.text)
                             final_translated_text = result.text
                             has_success = True
+                            is_ai_engine = True
                         
                         elif "Google Gemini" in engine_choice and api_key:
                             prompt = "다음 텍스트를 " + lang_name + "로 번역해줘. 어색한 직역투를 지우고 매끄러운 자연스러운 표현으로 번역 결과만 출력해줘:\n\n" + user_text
@@ -368,6 +337,7 @@ else:
                             st.write(translated_res)
                             final_translated_text = translated_res
                             has_success = True
+                            is_ai_engine = True
                             
                         else:
                             with st.spinner(t['spinner_text']):
@@ -377,34 +347,27 @@ else:
                             st.write(translated_text)
                             final_translated_text = translated_text
                             has_success = True
+                            is_ai_engine = False  # 기본 기번은 요약 미제공
                             
                     except Exception as e:
                         st.error(t['error_msg'] + str(e))
 
-                # ⚡ [업그레이드 포인트] 기번이 다소 어성하게 번역했더라도, [원본]과 [번역본]을 동시에 던져주어 맥락 손실 없는 완벽한 AI 요약 리포트 생성
-                if has_success and final_translated_text:
+                # ⚡ AI 엔진(Gemini 또는 DeepL)을 사용할 때만 AI 요약 리포트 생성
+                if has_success and is_ai_engine and api_key:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
-                    
-                    summary_output = ""
-                    if api_key:
-                        try:
-                            summary_prompt = (
-                                "다음 원문과 번역된 텍스트를 함께 참고하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n"
-                                "번역투가 어색할 수 있으므로 원문의 정확한 맥락(기한, 날짜, 시간, 장소, 시험 범위 등)을 파악하여 반영하고, "
-                                "원문에 특정 항목이 없다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n"
-                                "결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n"
-                                "[원본 텍스트]\n" + user_text + "\n\n"
-                                "[번역된 텍스트]\n" + final_translated_text
-                            )
-                            summary_output = generate_gemini_auto(api_key, summary_prompt)
-                        except Exception:
-                            summary_output = ""
-
-                    if not summary_output:
-                        summary_output = smart_fallback_summary(final_translated_text, engine_choice, lang_name)
-
-                    st.info(summary_output)
+                    try:
+                        summary_prompt = (
+                            "다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n"
+                            "원문에 명시된 내용(예: 기한, 날짜, 시간, 장소, 시험 범위 등)이 있다면 해당 항목을 포함하고, "
+                            "만약 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n"
+                            "결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n"
+                            "[번역된 텍스트]\n" + final_translated_text
+                        )
+                        summary_output = generate_gemini_auto(api_key, summary_prompt)
+                        st.info(summary_output)
+                    except Exception as e:
+                        st.warning("⚠️ 요약 리포트 생성 실패: " + str(e))
 
     # --- [탭 2: 이미지 번역] ---
     with tab2:
@@ -428,15 +391,15 @@ else:
                         st.success(t['success_img'])
                         st.markdown(translated_img_res)
 
+                        # 이미지 번역은 항상 Gemini 비전이므로 요약 리포트 제공
                         st.markdown("---")
                         st.subheader(t['summary_section'])
                         try:
                             img_summary_prompt = "다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.\n이미지 내용에 기한, 날짜, 시간, 장소, 범위 등이 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.\n\n[이미지 번역 결과]\n" + translated_img_res
                             img_summary_output = generate_gemini_auto(api_key, img_summary_prompt)
-                        except Exception:
-                            img_summary_output = smart_fallback_summary(translated_img_res, "Google Gemini (Vision OCR)", lang_name)
-
-                        st.info(img_summary_output)
+                            st.info(img_summary_output)
+                        except Exception as e:
+                            st.warning("⚠️ 요약 리포트 생성 실패: " + str(e))
 
                     except Exception as e:
                         st.error(t['error_msg'] + str(e))
