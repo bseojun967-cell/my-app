@@ -126,7 +126,7 @@ TEXTS = {
 
 ### 🔑 2. API 키 발급 및 설정 가이드
 - **기본 자동 기계번역**: API 키 없이도 즉시 사용 가능합니다.
-- **Google Gemini API**: 학술 교재 이미지 분석 및 고품질 AI 번역을 위해 필요합니다.
+- **Google Gemini API**: 학술 교재 이미지 분석 및 AI 딸각 요약을 위해 필요합니다.
   - 🔗 [Google AI Studio 바로가기 (API 키 발급 링크)](https://aistudio.google.com/) 에서 무료로 발급받을 수 있습니다.
 - **DeepL API**: 압도적 자연스러움의 번역을 위해 필요합니다.
   - 🔗 [DeepL API 무료/유료 계정 발급 링크](https://www.deepl.com/pro-api) 에서 발급받을 수 있습니다.
@@ -168,7 +168,7 @@ TEXTS = {
 
 ### 🔑 2. API Key Setup Guide
 - **Free Machine Translation**: Available instantly without an API key.
-- **Google Gemini API**: Required for image OCR and advanced AI translation.
+- **Google Gemini API**: Required for image OCR and AI smart summaries.
   - 🔗 Get your free key at [Google AI Studio Link](https://aistudio.google.com/).
 - **DeepL API**: Required for ultra-natural translations.
   - 🔗 Get your DeepL API key at [DeepL API Link](https://www.deepl.com/pro-api).
@@ -180,7 +180,7 @@ TEXTS = {
         "current_lang": "Current Target Language:",
         "back_btn": "🔄 Return to Home",
         "tab1": "📝 Text Translation & Compare",
-        "tab2": "🖼️ Image Translation (Gemini)",
+        "tab2": "🖼️ 이미지 번역 (Gemini)",
         "text_header": "Text Translation",
         "text_prompt": "Enter text to translate:",
         "text_btn": "Run Translation",
@@ -348,18 +348,19 @@ else:
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
 
-                # ⚡ AI가 텍스트 내용을 분석하여 유동적으로 요약 리포트 생성 (장소나 기한이 없으면 알아서 판단·생략)
-                if has_success:
+                # ⚡ 어떤 엔진을 쓰든 번역 완료 후, 사이드바에 입력된 Gemini API 키를 활용해 AI 딸각 요약 리포트 자동 생성
+                if has_success and final_translated_text:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
                     
                     summary_output = ""
-                    if api_key:
+                    # 요약은 Gemini API 키가 입력되어 있으면 AI가 분석, 없으면 입력한 Gemini 키 안내 및 기본 요약 제공
+                    if api_key and ("DeepL" in engine_choice or "기본" in engine_choice or "Google Gemini" in engine_choice):
                         try:
                             summary_prompt = f"""
-다음 번역된 텍스트를 분석하여 핵심 요약 리포트를 작성해줘.
-원문에 명시된 내용(예: 기한, 날짜, 시간, 장소 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 과감히 생략하거나 유연하게 작성해줘. 
-결과는 깔끔한 마크다운 불릿 포인트 형태로 요약해줘.
+다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.
+원문에 명시된 내용(예: 기한, 날짜, 시간, 장소, 시험 범위 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.
+결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.
 
 [번역된 텍스트]
 {final_translated_text}
@@ -368,14 +369,20 @@ else:
                         except Exception:
                             summary_output = ""
 
-                    # Gemini 요약에 실패했거나 API 키가 없는 경우 기본 안전 요약 출력
                     if not summary_output:
-                        summary_output = f"""
+                        if not api_key:
+                            summary_output = f"""
+- **📝 내용 요약**: 번역이 성공적으로 완료되었습니다. 
+- **💡 팁**: 사이드바에 **Gemini API 키**를 입력하시면, AI가 텍스트 내의 일정·시험범위 등을 자동으로 분석하여 똑똑한 **딸각 요약 리포트**를 제공해 줍니다!
+- **⚙️ 사용 엔진**: `{engine_choice}`
+- **🌐 목표 언어**: `{lang_name}`
+                            """
+                        else:
+                            summary_output = f"""
 - **📝 내용 요약**: 입력된 학사 텍스트가 성공적으로 번역되었습니다.
 - **⚙️ 사용 엔진**: `{engine_choice}`
 - **🌐 목표 언어**: `{lang_name}`
-- *(참고: 텍스트 내에 명시된 일정이나 장소 정보가 없어 기본 요약으로 출력되었습니다.)*
-                        """
+                            """
 
                     st.info(summary_output)
 
@@ -407,7 +414,7 @@ else:
                         try:
                             img_summary_prompt = f"""
 다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.
-이미지 내용에 기한, 날짜, 시간, 장소가 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.
+이미지 내용에 기한, 날짜, 시간, 장소, 범위 등이 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.
 
 [이미지 번역 결과]
 {translated_img_res}
