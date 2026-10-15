@@ -43,14 +43,42 @@ def free_google_translate(text, target_lang_code):
     return translated_text if translated_text else text
 
 # ---------------------------------------------------------
-# 2. 다이렉트 Gemini REST API 호출 함수 (SDK 라이브러리 미사용)
+# 2. 계정별 동작 가능한 모델을 자동 감지하는 Gemini REST 호출 함수
 # ---------------------------------------------------------
-def generate_gemini_direct(api_key, prompt, image=None):
-    # 구글 공식 REST API URL (v1)
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key.strip()}"
+def generate_gemini_auto(api_key, prompt, image=None):
+    clean_key = api_key.strip()
     
+    # 1단계: 내 API 키로 사용 가능한 Gemini 모델 목록 조회
+    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_key}"
+    valid_models = []
+    
+    try:
+        list_res = requests.get(list_url, timeout=10)
+        if list_res.status_code == 200:
+            models_data = list_res.json().get("models", [])
+            for m in models_data:
+                methods = m.get("supportedGenerationMethods", [])
+                if "generateContent" in methods:
+                    name = m.get("name", "")
+                    if name:
+                        valid_models.append(name)
+    except Exception:
+        pass
+
+    # 계정 목록 조회가 실패하거나 비어있을 경우 대비한 하드코딩 백업
+    if not valid_models:
+        valid_models = [
+            "models/gemini-1.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-1.5-pro",
+            "models/gemini-1.0-pro"
+        ]
+
+    # 우선순위 정렬 (flash 계열 우선)
+    valid_models.sort(key=lambda x: 0 if "flash" in x else 1)
+
+    # 2단계: 이미지/텍스트 요청 페이로드 구성
     parts = [{"text": prompt}]
-    
     if image:
         buffered = io.BytesIO()
         image.save(buffered, format="JPEG")
@@ -62,26 +90,26 @@ def generate_gemini_direct(api_key, prompt, image=None):
             }
         })
         
-    payload = {
-        "contents": [{
-            "parts": parts
-        }]
-    }
-    
+    payload = {"contents": [{"parts": parts}]}
     headers = {"Content-Type": "application/json"}
-    
-    response = requests.post(url, json=payload, headers=headers, timeout=20)
-    
-    if response.status_code == 200:
-        res_data = response.json()
+
+    # 3단계: 확인된 사용 가능 모델 주소로 순차 호출
+    last_err = ""
+    for model_fullname in valid_models:
+        # models/gemini-1.5-flash 형태로 들어오므로 그대로 URL 생성
+        target_url = f"https://generativelanguage.googleapis.com/v1beta/{model_fullname}:generateContent?key={clean_key}"
         try:
-            return res_data["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            raise RuntimeError("Gemini 응답 구조 해석 실패")
-    else:
-        # 에러 메시지 상세 출력
-        err_detail = response.json().get("error", {}).get("message", response.text)
-        raise RuntimeError(f"Gemini API 에러 (상태 코드 {response.status_code}): {err_detail}")
+            res = requests.post(target_url, json=payload, headers=headers, timeout=20)
+            if res.status_code == 200:
+                res_data = res.json()
+                return res_data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                last_err = f"[{model_fullname}] Code {res.status_code}: {res.text}"
+        except Exception as e:
+            last_err = str(e)
+            continue
+
+    raise RuntimeError(f"모든 Gemini 모델 호출 실패. (상세 에러: {last_err})")
 
 # ---------------------------------------------------------
 # 다국어 텍스트 사전
@@ -239,7 +267,7 @@ else:
                     elif engine_choice == "Google Gemini" and api_key:
                         prompt = f"다음 텍스트를 오직 번역 결과만 깔끔하게 자연스럽고 정확하게 {lang_name}로 번역해줘:\n\n{user_text}"
                         with st.spinner(t['spinner_text']):
-                            translated_res = generate_gemini_direct(api_key, prompt)
+                            translated_res = generate_gemini_auto(api_key, prompt)
                         st.success(t['success_res'])
                         st.write(translated_res)
                         
@@ -270,7 +298,7 @@ else:
                         prompt = f"이 이미지 안에 들어있는 텍스트를 추출하고, 추출한 내용을 {lang_name}로 정확하고 자연스럽게 번역해줘. 결과는 [원문 텍스트]와 [번역 결과]로 나누어서 출력해줘."
                         
                         with st.spinner(t['spinner_img']):
-                            translated_img_res = generate_gemini_direct(api_key, prompt, image)
+                            translated_img_res = generate_gemini_auto(api_key, prompt, image)
                             
                         st.success(t['success_img'])
                         st.write(translated_img_res)
