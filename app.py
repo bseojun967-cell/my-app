@@ -153,8 +153,7 @@ TEXTS = {
         "success_res": "✨ 번역 결과:",
         "success_img": "✨ 이미지 분석 및 번역 결과:",
         "error_msg": "❌ 번역 중 에러가 발생했습니다: ",
-        "summary_section": "⚡ 번역 내용 및 일정 요약 (딸각 리포트)",
-        "summary_btn": "✨ 기한·날짜·시간·장소 및 내용 요약 리포트 생성"
+        "summary_section": "⚡ 번역 내용 및 일정 요약 (딸각 리포트)"
     },
     "영어 (English)": {
         "title": "🌐 Multi-Engine Academic Translator",
@@ -195,8 +194,7 @@ TEXTS = {
         "success_res": "✨ Translation Result:",
         "success_img": "✨ Image Translation Result:",
         "error_msg": "❌ An error occurred: ",
-        "summary_section": "⚡ Translation & Schedule Summary",
-        "summary_btn": "✨ Generate Summary Report (Deadline, Date, Time, Location)"
+        "summary_section": "⚡ Translation & Schedule Summary"
     }
 }
 
@@ -343,35 +341,34 @@ else:
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
 
-                # ⚡ 번역 완료 후 기한·날짜·시간·장소 및 내용 요약 리포트 섹션
+                # ⚡ 번역 완료 즉시 기한·날짜·시간·장소 및 내용 요약 리포트 자동 출력 (딸각 요약)
                 if translated_output:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
-                    if st.button(t['summary_btn'], type="primary", key="text_summary_btn"):
-                        if lang_choice == "한국어 (Korean)":
-                            summary_report = f"""
-                            - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/문서 처리 마감일 기준)
-                            - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
-                            - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
-                            - **📍 장소 (Location)**: 학사 워크스페이스 / 온라인 원격 환경
-                            - **📝 내용 요약 포트 (Core Summary)**: 
-                              - **사용 엔진**: `{engine_choice}`
-                              - **목표 언어**: `{lang_name}`
-                              - **번역 내용 핵심 요약**: 입력된 학사 원문/텍스트를 바탕으로 선택한 엔진의 특성을 살려 성공적으로 번역을 완료함.
-                            """
-                        else:
-                            summary_report = f"""
-                            - **⏳ Deadline**: October 31, 2026
-                            - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
-                            - **⏰ Time**: {datetime.now().strftime("%H:%M")}
-                            - **📍 Location**: Academic Workspace / Remote
-                            - **📝 Core Summary**: 
-                              - **Engine Used**: `{engine_choice}`
-                              - **Target Language**: `{lang_name}`
-                              - **Summary**: Successfully translated the academic text using the selected translation engine.
-                            """
-                        st.success("📋 요약 리포트 생성 완료")
-                        st.markdown(summary_report)
+                    if lang_choice == "한국어 (Korean)":
+                        summary_report = f"""
+                        - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/문서 처리 마감일 기준)
+                        - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
+                        - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
+                        - **📍 장소 (Location)**: 학사 워크스페이스 / 온라인 원격 환경
+                        - **📝 내용 요약 포트 (Core Summary)**: 
+                          - **사용 엔진**: `{engine_choice}`
+                          - **목표 언어**: `{lang_name}`
+                          - **번역 내용 핵심 요약**: 입력된 학사 원문/텍스트를 바탕으로 선택한 엔진의 특성을 살려 성공적으로 번역을 완료함.
+                        """
+                    else:
+                        summary_report = f"""
+                        - **⏳ Deadline**: October 31, 2026
+                        - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
+                        - **⏰ Time**: {datetime.now().strftime("%H:%M")}
+                        - **📍 Location**: Academic Workspace / Remote
+                        - **📝 Core Summary**: 
+                          - **Engine Used**: `{engine_choice}`
+                          - **Target Language**: `{lang_name}`
+                          - **Summary**: Successfully translated the academic text using the selected translation engine.
+                        """
+                    st.success("📋 딸각 요약 리포트 자동 생성 완료")
+                    st.markdown(summary_report)
 
     # --- [탭 2: 이미지 번역] ---
     with tab2:
@@ -395,34 +392,33 @@ else:
                         st.success(t['success_img'])
                         st.markdown(translated_img_res)
 
-                        # 이미지 번역 완료 후 요약 리포트
+                        # 이미지 번역 완료 즉시 요약 리포트 자동 출력
                         st.markdown("---")
                         st.subheader(t['summary_section'])
-                        if st.button(t['summary_btn'], type="primary", key="img_summary_btn"):
-                            if lang_choice == "한국어 (Korean)":
-                                summary_report = f"""
-                                - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/교재 분석 마감일 기준)
-                                - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
-                                - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
-                                - **📍 장소 (Location)**: 학사 워크스페이스 / 이미지 분석 환경
-                                - **📝 내용 요약 포트 (Core Summary)**: 
-                                  - **사용 엔진**: Google Gemini (이미지 OCR & 비전 번역)
-                                  - **목표 언어**: `{lang_name}`
-                                  - **번역 내용 핵심 요약**: 업로드된 이미지 속 전공 교재/원서 텍스트의 OCR 추출 및 학사 맞춤형 번역 완료.
-                                """
-                            else:
-                                summary_report = f"""
-                                - **⏳ Deadline**: October 31, 2026
-                                - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
-                                - **⏰ Time**: {datetime.now().strftime("%H:%M")}
-                                - **📍 Location**: Academic Workspace / Image Analysis
-                                - **📝 Core Summary**: 
-                                  - **Engine Used**: Google Gemini (OCR & Vision Translation)
-                                  - **Target Language**: `{lang_name}`
-                                  - **Summary**: Successfully extracted text and translated the uploaded academic image.
-                                """
-                            st.success("📋 요약 리포트 생성 완료")
-                            st.markdown(summary_report)
+                        if lang_choice == "한국어 (Korean)":
+                            summary_report = f"""
+                            - **⏳ 기한 (Deadline)**: 2026년 10월 31일 (과제/교재 분석 마감일 기준)
+                            - **📅 날짜 (Date)**: {datetime.now().strftime("%Y년 %m월 %d일")}
+                            - **⏰ 시간 (Time)**: {datetime.now().strftime("%H시 %M분")}
+                            - **📍 장소 (Location)**: 학사 워크스페이스 / 이미지 분석 환경
+                            - **📝 내용 요약 포트 (Core Summary)**: 
+                              - **사용 엔진**: Google Gemini (이미지 OCR & 비전 번역)
+                              - **목표 언어**: `{lang_name}`
+                              - **번역 내용 핵심 요약**: 업로드된 이미지 속 전공 교재/원서 텍스트의 OCR 추출 및 학사 맞춤형 번역 완료.
+                            """
+                        else:
+                            summary_report = f"""
+                            - **⏳ Deadline**: October 31, 2026
+                            - **📅 Date**: {datetime.now().strftime("%B %d, %Y")}
+                            - **⏰ Time**: {datetime.now().strftime("%H:%M")}
+                            - **📍 Location**: Academic Workspace / Image Analysis
+                            - **📝 Core Summary**: 
+                              - **Engine Used**: Google Gemini (OCR & Vision Translation)
+                              - **Target Language**: `{lang_name}`
+                              - **Summary**: Successfully extracted text and translated the uploaded academic image.
+                            """
+                        st.success("📋 딸각 요약 리포트 자동 생성 완료")
+                        st.markdown(summary_report)
 
                     except Exception as e:
                         st.error(f"{t['error_msg']}{e}")
