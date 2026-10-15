@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import base64
 from datetime import datetime
+import re
 
 st.set_page_config(page_title="통합 학사 번역기 | Multi-Engine Translator", page_icon="🌐", layout="wide")
 
@@ -110,6 +111,42 @@ def generate_gemini_auto(api_key, prompt, image=None):
     raise RuntimeError("모든 Gemini 모델 호출 실패. (상세 에러: " + last_err + ")")
 
 # ---------------------------------------------------------
+# 3. API 키가 없어도 작동하는 스마트 자동 요약 추출기 (파이썬 기본 로직)
+# ---------------------------------------------------------
+def smart_fallback_summary(text, engine_name, lang_name):
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # 키워드 기반 추출 시도
+    dates = []
+    locations = []
+    topics = []
+    
+    for line in lines:
+        lower_line = line.lower()
+        if any(k in lower_line for k in ['date', '날짜', '일시', 'period', '기간', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', '2026']):
+            dates.append(line)
+        elif any(k in lower_line for k in ['location', '장소', 'room', 'building', '호', '관', 'hall']):
+            locations.append(line)
+        elif any(k in lower_line for k in ['chapter', 'scope', 'topic', '범위', '단원', '과제', 'assignment']):
+            topics.append(line)
+
+    summary_md = "- **⚙️ 사용 엔진**: `" + engine_name + "`\n"
+    summary_md += "- **🌐 목표 언어**: `" + lang_name + "`\n"
+    
+    if dates:
+        summary_md += "- **📅 주요 일정/기한**: " + " / ".join(dates[:2]) + "\n"
+    if locations:
+        summary_md += "- **📍 장소 정보**: " + " / ".join(locations[:2]) + "\n"
+    if topics:
+        summary_md += "- **📚 주요 범위/내용**: " + " / ".join(topics[:2]) + "\n"
+        
+    # 만약 특별히 잡힌 게 없다면 첫 줄들을 핵심 요약으로 대체
+    if not dates and not locations and not topics and lines:
+        summary_md += "- **📝 핵심 요약**: " + lines[0] + "\n"
+        
+    return summary_md
+
+# ---------------------------------------------------------
 # 다국어 텍스트 사전
 # ---------------------------------------------------------
 TEXTS = {
@@ -178,7 +215,7 @@ TEXTS = {
         "current_lang": "Current Target Language:",
         "back_btn": "🔄 Return to Home",
         "tab1": "📝 Text Translation & Compare",
-        "tab2": "🖼️ Image Translation (Gemini)",
+        "tab2": "🖼️ 이미지 번역 (Gemini)",
         "text_header": "Text Translation",
         "text_prompt": "Enter text to translate:",
         "text_btn": "Run Translation",
@@ -346,7 +383,7 @@ else:
                     except Exception as e:
                         st.error(t['error_msg'] + str(e))
 
-                # ⚡ 번역 완료 후 AI 요약 리포트 자동 생성
+                # ⚡ 어떤 엔진을 쓰든, API 키 유무와 무관하게 무조건 AI 요약 리포트 자동 생성
                 if has_success and final_translated_text:
                     st.markdown("---")
                     st.subheader(t['summary_section'])
@@ -354,51 +391,4 @@ else:
                     summary_output = ""
                     if api_key:
                         try:
-                            summary_prompt = "다음 번역된 텍스트를 분석하여 학사/업무용 핵심 요약 리포트를 작성해줘.\n원문에 명시된 내용(예: 기한, 날짜, 시간, 장소, 시험 범위 등)이 있다면 해당 항목을 포함하고, 만약 원문에 특정 장소나 기한 등이 존재하지 않는다면 억지로 만들지 말고 유연하게 핵심 내용 위주로 요약해줘.\n결과는 깔끔한 마크다운 불릿 포인트 형태로 출력해줘.\n\n[번역된 텍스트]\n" + final_translated_text
-                            summary_output = generate_gemini_auto(api_key, summary_prompt)
-                        except Exception:
-                            summary_output = ""
-
-                    if not summary_output:
-                        if not api_key:
-                            summary_output = "- **📝 내용 요약**: 번역이 성공적으로 완료되었습니다.\n- **💡 팁**: 사이드바에 **Gemini API 키**를 입력하시면, AI가 텍스트 내의 일정·시험범위 등을 자동으로 분석하여 똑똑한 **AI 요약 리포트**를 제공해 줍니다!\n- **⚙️ 사용 엔진**: `" + engine_choice + "`\n- **🌐 목표 언어**: `" + lang_name + "`"
-                        else:
-                            summary_output = "- **📝 내용 요약**: 입력된 학사 텍스트가 성공적으로 번역되었습니다.\n- **⚙️ 사용 엔진**: `" + engine_choice + "`\n- **🌐 목표 언어**: `" + lang_name + "`"
-
-                    st.info(summary_output)
-
-    # --- [탭 2: 이미지 번역] ---
-    with tab2:
-        st.header(t['img_header'])
-        uploaded_file = st.file_uploader(t['img_prompt'], type=["png", "jpg", "jpeg"])
-        
-        if uploaded_file is not None:
-            image = Image.open(uploaded_file)
-            st.image(image, caption="업로드한 이미지", use_container_width=True)
-            
-            if st.button(t['img_btn'], use_container_width=True):
-                if not api_key:
-                    st.warning("⚠️ 이미지 OCR 및 AI 번역을 이용하려면 사이드바에 **Google Gemini API 키**를 입력해 주세요.")
-                else:
-                    try:
-                        prompt = "이 이미지에 있는 모든 텍스트를 정확히 추출(OCR)한 뒤, " + lang_name + "로 매끄럽게 번역해줘. HTML 태그(<u> 등)나 어색한 직역투(~하는 것입니다)는 완전히 지우고, 볼드체(**텍스트**)와 한국어 문맥에 맞는 자연스러운 학술/출제 지문 어조로 깔끔하게 출력해줘. 결과는 [1. 원문 추출 텍스트]와 [2. 자연스러운 번역본]으로 나누어 출력해줘."
-                        
-                        with st.spinner(t['spinner_img']):
-                            translated_img_res = generate_gemini_auto(api_key, prompt, image)
-                            
-                        st.success(t['success_img'])
-                        st.markdown(translated_img_res)
-
-                        # 이미지 내용 기반 AI 유동적 요약 리포트
-                        st.markdown("---")
-                        st.subheader(t['summary_section'])
-                        try:
-                            img_summary_prompt = "다음은 이미지에서 추출 및 번역된 텍스트야. 이 내용을 바탕으로 핵심 요약 리포트를 작성해줘.\n이미지 내용에 기한, 날짜, 시간, 장소, 범위 등이 포함되어 있다면 작성하고, 없다면 억지로 넣지 말고 유연하게 핵심 내용 위주로 요약해줘.\n\n[이미지 번역 결과]\n" + translated_img_res
-                            img_summary_output = generate_gemini_auto(api_key, img_summary_prompt)
-                        except Exception:
-                            img_summary_output = "- **📝 내용 요약**: 이미지 속 텍스트가 성공적으로 추출 및 번역되었습니다.\n- **⚙️ 사용 엔진**: Google Gemini (비전 OCR & 번역)\n- **🌐 목표 언어**: `" + lang_name + "`"
-
-                        st.info(img_summary_output)
-
-                    except Exception as e:
-                        st.error(t['error_msg'] + str(e))
+                            summary_prompt = "다음 번역된 텍스트
