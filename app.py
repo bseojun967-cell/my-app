@@ -265,7 +265,7 @@ else:
                         st.write(result.text)
                     
                     elif engine_choice == "Google Gemini" and api_key:
-                        prompt = f"다음 텍스트를 오직 번역 결과만 깔끔하게 자연스럽고 정확하게 {lang_name}로 번역해줘:\n\n{user_text}"
+                        prompt = f"다음 텍스트를 {lang_name}로 번역해줘. 영어 특유의 어색한 직역투(가주어, 피동태, 상투적 표현)를 완전히 지우고, 자연스러운 전공 서적이나 논문 스타일로 매끄럽게 다듬어서 번역 결과만 출력해줘:\n\n{user_text}"
                         with st.spinner(t['spinner_text']):
                             translated_res = generate_gemini_auto(api_key, prompt)
                         st.success(t['success_res'])
